@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>可攜式連結記事簿 · GitHub Pages 版</title>
   <style>
@@ -59,17 +60,10 @@
     .sep{height:1px;background:var(--border);margin:8px 0}
     .highlight{background:rgba(96,165,250,.08);border:1px dashed #1d4ed8}
   </style>
-  <!--
-  使用說明 (存放在這裡方便你以後回看)：
-  1) 將本檔上傳到 GitHub（例如放在 repo 的 docs/ 或根目錄），啟用 GitHub Pages 後即可從任何地方開啟。
-  2) 預設資料保存在瀏覽器 localStorage（僅該電腦可見）。
-  3) 若要跨裝置同步：
-     - 點右上角「⚙ 設定」輸入你的 GitHub owner/repo/branch/path 與個人存取權杖（PAT）。
-     - 按「從 GitHub 載入」將遠端 JSON 載入；按「存到 GitHub」即可提交回 repo。
-       ※ 安全建議：PAT 不要寫進檔案或同步，僅在每台裝置的瀏覽器設定一次（會存在 localStorage）。
-  4) 可隨時「匯出 JSON」做備份，或「匯入 JSON」以覆蓋本機資料。
-  5) 每筆資料提供：編輯、刪除、複製連結、歷程紀錄。
-  6) 類型(Type)可新增，並可用上方篩選與排序。
+  <!-- 使用說明：
+    1) 單檔版，上傳到 GitHub Pages 即可用。
+    2) 預設存 localStorage；若要跨裝置，使用 ⚙ 設定 綁定 GitHub JSON 並以 PAT 同步。
+    3) 此版本已強制用 UTF-8 編碼/解碼 GitHub 內容，避免中文亂碼。
   -->
 </head>
 <body>
@@ -134,7 +128,7 @@
       </table>
     </section>
 
-    <p class="footer">Made with ❤ | 資料預設存於本機瀏覽器（localStorage）。如需跨裝置修改，請用上方「設定」綁定 GitHub JSON 檔並以 PAT 同步。</p>
+    <p class="footer">Made with ❤ | 資料預設存於本機瀏覽器（localStorage）。如需跨裝置修改，請用上方「設定」綁定 GitHub JSON 並以 PAT 同步。</p>
   </main>
 
   <!-- 編輯 Modal -->
@@ -190,7 +184,7 @@
         </label>
         <div class="muted" style="margin-top:6px">
           建議建立僅針對該 repo 的 Fine-grained PAT，授予 <span class="kbd">Contents: Read and Write</span> 權限。
-          <br/>安全提醒：請勿把 PAT 寫進本檔案或提交到 Git。此欄位僅儲存在你的瀏覽器。
+          <br/>安全提醒：請勿把 PAT 寫進檔案或提交到 Git。此欄位僅儲存在你的瀏覽器。
         </div>
       </div>
       <div class="flex" style="padding:12px 16px">
@@ -204,52 +198,6 @@
   </dialog>
 
   <script>
-  // ====== 修改重點：強制以 UTF-8 解碼 ======
-  function decodeBase64UTF8(str){
-  try {
-  return decodeURIComponent(escape(atob(str)));
-  } catch(e){
-  console.error('Base64 UTF-8 decode error:', e);
-  return atob(str);
-  }
-  }
-  
-  
-  async function ghLoad(){
-  if(!cfg.owner||!cfg.repo||!cfg.path){ alert('請先到設定填寫 owner/repo/path'); return }
-  setStat('從 GitHub 讀取中…');
-  const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch||'main')}`;
-  const res=await fetch(url,{headers:ghHeaders()});
-  if(res.status===404){ if(confirm('遠端檔案不存在，要建立一個新的嗎？（之後請按「存到 GitHub」）')){ state.items=[]; saveLocal(); renderTable(); return } else { setStat('已取消'); return } }
-  if(!res.ok){ const t=await res.text(); alert('讀取失敗：'+res.status+'\\n'+t); return }
-  const json=await res.json();
-  state.ghSha = json.sha;
-  const content = decodeBase64UTF8(json.content||'');
-  const data = JSON.parse(content||'{}');
-  if(!data || !Array.isArray(data.items)) throw new Error('遠端 JSON 格式不正確');
-  state.items = data.items; state.types = Array.isArray(data.types)?data.types:state.types;
-  saveLocal(); renderTypes(); renderTable();
-  setStat(`已從 GitHub 載入（${cfg.owner}/${cfg.repo}:${cfg.branch||'main'} · ${cfg.path}）`);
-  }
-  
-  
-  async function ghSave(){
-  if(!cfg.owner||!cfg.repo||!cfg.path||!cfg.token){ alert('請先到設定填寫 owner/repo/path 與 PAT'); return }
-  setStat('上傳至 GitHub…');
-  if(!state.ghSha){ try{ await ghLoad() }catch{ /* 忽略 */ } }
-  
-  
-  const payload = { version:1, updatedAt:now(), types:state.types, items:state.items };
-  const utf8Content = unescape(encodeURIComponent(JSON.stringify(payload,null,2)));
-  const content = btoa(utf8Content);
-  const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}`;
-  const body={ message:`chore: update links.json @ ${new Date().toISOString()}`, content, branch: cfg.branch||'main', sha: state.ghSha };
-  const res=await fetch(url,{ method:'PUT', headers:{...ghHeaders(),'Content-Type':'application/json'}, body:JSON.stringify(body) });
-  if(!res.ok){ const t=await res.text(); alert('儲存失敗：'+res.status+'\\n'+t); return }
-  const out=await res.json(); state.ghSha = out.content?.sha || undefined;
-  setStat('已提交至 GitHub ✅');
-  }
-    
   // ====== 資料模型 ======
   /** @typedef {{ id:string, type:string, desc:string, url:string, createdAt:number, updatedAt:number, history:Array<{ts:number,action:string,note?:string,changes?:Record<string,{from:any,to:any}>}> }} Item */
   const $ = sel => document.querySelector(sel);
@@ -282,16 +230,13 @@
   function setStat(s){ $('#stat').textContent = s }
 
   function renderTypes(){
-    // selector for entry form
     const sel = $('#typeSel'); sel.innerHTML = '';
     state.types.sort((a,b)=>a.localeCompare(b,'zh-Hant'));
     for(const t of state.types){ const o=document.createElement('option'); o.value=o.textContent=t; sel.appendChild(o) }
 
-    // filter dropdown
     const f = $('#filterType'); f.innerHTML = '';
     for(const t of ['全部',...state.types]){ const o=document.createElement('option'); o.value=t; o.textContent=t; f.appendChild(o) }
 
-    // chips
     const wrap = $('#typeChips'); wrap.innerHTML='';
     state.types.forEach(t=>{
       const d=document.createElement('div'); d.className='chip'; d.textContent=t; wrap.appendChild(d)
@@ -344,7 +289,6 @@
   }
 
   function typeColor(name){
-    // 將類型字串 hash 成穩定顏色（HSL → HEX）
     let h=0; for(let i=0;i<name.length;i++){ h = (h*31 + name.charCodeAt(i))>>>0 }
     h = h % 360; const s=60, l=52;
     return hslToHex(h,s,l);
@@ -383,7 +327,6 @@
   let editingId=null;
   function openEdit(id){
     editingId=id; const it=state.items.find(x=>x.id===id); if(!it) return;
-    // 填入目前值
     const sel=$('#editType'); sel.innerHTML=''; state.types.forEach(t=>{ const o=document.createElement('option'); o.value=o.textContent=t; sel.appendChild(o) }); sel.value=it.type;
     $('#editDesc').value=it.desc; $('#editUrl').value=it.url; $('#editNote').value='';
     $('#editDlg').showModal();
@@ -444,10 +387,10 @@
         state.items = data.items; state.types = Array.isArray(data.types) ? data.types : state.types;
         saveLocal(); renderTypes(); renderTable(); setStat('已匯入 JSON 並覆蓋現有資料');
       }catch(err){ alert('匯入失敗：'+err.message) }
-    }; reader.readAsText(file);
+    }; reader.readAsText(file, 'utf-8');
   }
 
-  // ====== GitHub 連線 ======
+  // ====== GitHub 連線（UTF-8 強制） ======
   function loadCfg(){ try{ return JSON.parse(localStorage.getItem(LS_CFG)||'{}') }catch{ return {} } }
   function saveCfg(v){ localStorage.setItem(LS_CFG, JSON.stringify(v||{})) }
 
@@ -467,6 +410,9 @@
     return h;
   }
 
+  function b64EncodeUTF8(str){ return btoa(unescape(encodeURIComponent(str))) }
+  function b64DecodeUTF8(b64){ try{ return decodeURIComponent(escape(atob(b64))) }catch(e){ console.warn('Fallback base64 decode', e); return atob(b64) } }
+
   async function ghLoad(){
     if(!cfg.owner||!cfg.repo||!cfg.path){ alert('請先到設定填寫 owner/repo/path'); return }
     setStat('從 GitHub 讀取中…');
@@ -476,7 +422,7 @@
     if(!res.ok){ const t=await res.text(); alert('讀取失敗：'+res.status+'\n'+t); return }
     const json=await res.json();
     state.ghSha = json.sha; // 存下次 PUT 用
-    const content = atob(json.content||'');
+    const content = b64DecodeUTF8(json.content||'');
     const data = JSON.parse(content||'{}');
     if(!data || !Array.isArray(data.items)) throw new Error('遠端 JSON 格式不正確');
     state.items = data.items; state.types = Array.isArray(data.types)?data.types:state.types;
@@ -487,11 +433,10 @@
   async function ghSave(){
     if(!cfg.owner||!cfg.repo||!cfg.path||!cfg.token){ alert('請先到設定填寫 owner/repo/path 與 PAT'); return }
     setStat('上傳至 GitHub…');
-    // 先確保拿到最新 sha
     if(!state.ghSha){ try{ await ghLoad() }catch{ /* 忽略 */ } }
 
     const payload = { version:1, updatedAt:now(), types:state.types, items:state.items };
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload,null,2))));
+    const content = b64EncodeUTF8(JSON.stringify(payload,null,2));
     const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}`;
     const body={ message:`chore: update links.json @ ${new Date().toISOString()}`, content, branch: cfg.branch||'main', sha: state.ghSha };
     const res=await fetch(url,{ method:'PUT', headers:{...ghHeaders(),'Content-Type':'application/json'}, body:JSON.stringify(body) });
