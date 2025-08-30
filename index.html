@@ -204,6 +204,52 @@
   </dialog>
 
   <script>
+  // ====== 修改重點：強制以 UTF-8 解碼 ======
+  function decodeBase64UTF8(str){
+  try {
+  return decodeURIComponent(escape(atob(str)));
+  } catch(e){
+  console.error('Base64 UTF-8 decode error:', e);
+  return atob(str);
+  }
+  }
+  
+  
+  async function ghLoad(){
+  if(!cfg.owner||!cfg.repo||!cfg.path){ alert('請先到設定填寫 owner/repo/path'); return }
+  setStat('從 GitHub 讀取中…');
+  const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch||'main')}`;
+  const res=await fetch(url,{headers:ghHeaders()});
+  if(res.status===404){ if(confirm('遠端檔案不存在，要建立一個新的嗎？（之後請按「存到 GitHub」）')){ state.items=[]; saveLocal(); renderTable(); return } else { setStat('已取消'); return } }
+  if(!res.ok){ const t=await res.text(); alert('讀取失敗：'+res.status+'\\n'+t); return }
+  const json=await res.json();
+  state.ghSha = json.sha;
+  const content = decodeBase64UTF8(json.content||'');
+  const data = JSON.parse(content||'{}');
+  if(!data || !Array.isArray(data.items)) throw new Error('遠端 JSON 格式不正確');
+  state.items = data.items; state.types = Array.isArray(data.types)?data.types:state.types;
+  saveLocal(); renderTypes(); renderTable();
+  setStat(`已從 GitHub 載入（${cfg.owner}/${cfg.repo}:${cfg.branch||'main'} · ${cfg.path}）`);
+  }
+  
+  
+  async function ghSave(){
+  if(!cfg.owner||!cfg.repo||!cfg.path||!cfg.token){ alert('請先到設定填寫 owner/repo/path 與 PAT'); return }
+  setStat('上傳至 GitHub…');
+  if(!state.ghSha){ try{ await ghLoad() }catch{ /* 忽略 */ } }
+  
+  
+  const payload = { version:1, updatedAt:now(), types:state.types, items:state.items };
+  const utf8Content = unescape(encodeURIComponent(JSON.stringify(payload,null,2)));
+  const content = btoa(utf8Content);
+  const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}`;
+  const body={ message:`chore: update links.json @ ${new Date().toISOString()}`, content, branch: cfg.branch||'main', sha: state.ghSha };
+  const res=await fetch(url,{ method:'PUT', headers:{...ghHeaders(),'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(!res.ok){ const t=await res.text(); alert('儲存失敗：'+res.status+'\\n'+t); return }
+  const out=await res.json(); state.ghSha = out.content?.sha || undefined;
+  setStat('已提交至 GitHub ✅');
+  }
+    
   // ====== 資料模型 ======
   /** @typedef {{ id:string, type:string, desc:string, url:string, createdAt:number, updatedAt:number, history:Array<{ts:number,action:string,note?:string,changes?:Record<string,{from:any,to:any}>}> }} Item */
   const $ = sel => document.querySelector(sel);
