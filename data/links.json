@@ -1,12 +1,63 @@
 {
   "version": 1,
-  "updatedAt": 1756609081768,
+  "updatedAt": 1756609258520,
   "types": [
+    "財經",
     "測試",
     "程式語言",
     "C++"
   ],
   "items": [
+    {
+      "id": "mez3rnaf4m5edk",
+      "type": "C++",
+      "desc": "hacking C++",
+      "url": "https://hackingcpp.com/tags/article.html",
+      "createdAt": 1756609207719,
+      "updatedAt": 1756609207719,
+      "history": [
+        {
+          "ts": 1756609207719,
+          "action": "create",
+          "changes": {
+            "type": {
+              "to": "C++"
+            },
+            "desc": {
+              "to": "hacking C++"
+            },
+            "url": {
+              "to": "https://hackingcpp.com/tags/article.html"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mez3qu52ia2h0c",
+      "type": "財經",
+      "desc": "[FB]定錨產業筆記",
+      "url": "https://www.facebook.com/investanchors",
+      "createdAt": 1756609169942,
+      "updatedAt": 1756609169942,
+      "history": [
+        {
+          "ts": 1756609169942,
+          "action": "create",
+          "changes": {
+            "type": {
+              "to": "財經"
+            },
+            "desc": {
+              "to": "[FB]定錨產業筆記"
+            },
+            "url": {
+              "to": "https://www.facebook.com/investanchors"
+            }
+          }
+        }
+      ]
+    },
     {
       "id": "mexqc8f9aliaq3",
       "type": "測試",
