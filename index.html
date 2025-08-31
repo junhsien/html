@@ -560,5 +560,51 @@
   })();
   </script>
 </script>
+  
+  <!-- 類型刪除支援（附加腳本） -->
+  <script>
+  (function(){
+    // 若主程式尚未定義 ensureType，補上
+    if(typeof window.ensureType !== 'function'){
+      window.ensureType = function(t){ try{ if(!window.state) window.state={}; if(!state.types.includes(t)) state.types.push(t) }catch(e){} }
+    }
+    // 類型刪除/重指定
+    if(typeof window.requestDeleteType !== 'function'){
+      window.requestDeleteType = function(t){
+        const n = (window.state?.items || window.state?.items === undefined) ? (state.items||[]).filter(it=>it.type===t).length : (state.items||[]).filter(it=>it.type===t).length;
+        const dlg = document.getElementById('typeDlg');
+        if(!dlg){ alert('找不到刪除類型對話框'); return }
+        document.getElementById('typeDlgMsg').textContent = `你正要刪除「${t}」。此類型共有 ${n} 筆項目。`;
+        dlg.dataset.targetType = t; dlg.showModal();
+      }
+    }
+    if(typeof window.doDeleteType !== 'function'){
+      window.doDeleteType = function(t, mode){
+        if(!t) return;
+        if(mode==='reassign'){
+          ensureType('未分類');
+          (state.items||[]).forEach(it=>{ if(it.type===t){ it.history = it.history||[]; it.history.push({ts:Date.now(),action:'edit',note:'刪除類型，改為未分類',changes:{type:{from:t,to:'未分類'}}}); it.type='未分類'; it.updatedAt=Date.now(); }});
+          state.types = (state.types||[]).filter(x=>x!==t);
+        }else if(mode==='purge'){
+          if(!confirm(`確定刪除類型「${t}」以及所有該類型項目？`)) return;
+          state.items = (state.items||[]).filter(it=>it.type!==t);
+          state.types = (state.types||[]).filter(x=>x!==t);
+        }
+        if(typeof saveLocal==='function') saveLocal();
+        if(typeof renderTypes==='function') renderTypes();
+        if(typeof renderTable==='function') renderTable();
+        const dlg=document.getElementById('typeDlg'); if(dlg) dlg.close();
+      }
+    }
+    // 綁定對話框按鈕（若存在）
+    const typeDlg=document.getElementById('typeDlg');
+    if(typeDlg){
+      const reassign=document.getElementById('btnTypeReassign');
+      const purge=document.getElementById('btnTypePurge');
+      if(reassign) reassign.onclick=()=> window.doDeleteType(typeDlg.dataset.targetType,'reassign');
+      if(purge) purge.onclick=()=> window.doDeleteType(typeDlg.dataset.targetType,'purge');
+    }
+  })();
+  </script>
 </body>
 </html>
